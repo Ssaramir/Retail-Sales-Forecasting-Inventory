@@ -1,0 +1,28 @@
+# Raw data — Kaggle competition rules + repo size. See data/README.md.
+data/*.csv
+data/*.parquet
+data/*.zip
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# MLflow local tracking store
+mlruns/
+mlartifacts/
+mlflow.db
+
+# OS / editors
+.DS_Store
+.vscode/
+.idea/
+
+# Regenerable heavy artifacts
+outputs/xgb_model.json
+outputs/predictions/*.parquet
