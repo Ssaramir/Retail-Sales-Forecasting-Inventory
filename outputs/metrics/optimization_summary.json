@@ -1,0 +1,14 @@
+{
+  "n_stores": 30,
+  "lead_time_days": 2,
+  "holding_cost_per_unit_day": 0.05,
+  "stockout_cost_per_unit": 5.0,
+  "storage_cap_multiple": 3.0,
+  "service_z": 1.645,
+  "order_up_to_cost": 1114232.2,
+  "lp_open_loop_cost": 1056263.4,
+  "lp_rolling_horizon_cost": 1083272.6,
+  "rolling_lp_cost_reduction_pct": 2.8,
+  "infeasible_stores": 0,
+  "note": "Realized cost on ACTUAL demand; costs are illustrative assumptions."
+}
