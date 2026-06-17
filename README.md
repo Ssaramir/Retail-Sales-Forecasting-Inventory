@@ -86,12 +86,16 @@ raw CSVs ──► data_prep ──► features ──► modeling ──► inv
 |---|---|---|
 | **Baseline** | Predict each day as that store's previous 7-day average | A simple business rule every ML model must beat |
 | **XGBoost Regressor** | Gradient-boosted trees on the engineered features | Handles mixed categorical/calendar features, nonlinearities, and interactions with little preprocessing |
+| **LSTM (TensorFlow/Keras)** | A sequence model over a 14-day window of sales + promo/calendar | A deep-learning comparison to test whether a temporal model beats the tree model |
 
-**On LSTM (honest note):** an LSTM was scoped as an optional stretch goal and is
-not included. For tabular retail data dominated by calendar and categorical
-signals, gradient-boosted trees are typically more practical, faster to train,
-easier to explain, and at least as accurate as a comparable LSTM. Adding a
-simplified LSTM on aggregate daily sales is listed under future improvements.
+**On the LSTM comparison:** a simple Keras LSTM (one LSTM layer over a 14-day
+window) was trained and compared head-to-head against XGBoost on an identical
+setup — same 100-store subset, same strict time-based split, same validation
+store-days. The subset keeps the LSTM tractable on a laptop, and XGBoost is
+retrained on that same subset so neither model has a data advantage. On tabular
+retail data dominated by calendar and promotion signals, the tree model was the
+more accurate and far cheaper choice; the LSTM was competitive but not better
+(see results below). See `src/lstm_model.py`.
 
 ## Evaluation metrics
 
@@ -132,6 +136,26 @@ intuitive, defensible ranking.
 ![Model comparison](outputs/figures/eval_model_comparison.png)
 ![Daily actual vs predicted](outputs/figures/eval_daily_actual_vs_pred.png)
 
+### LSTM vs XGBoost (controlled comparison on 100 stores)
+
+Both models trained on the same 100-store subset and the same time-based split,
+scored on the identical 3,606 validation store-days:
+
+| Metric | LSTM | XGBoost (subset) |
+|---|---:|---:|
+| MAE | 639 | **554** |
+| RMSE | 901 | **757** |
+| SMAPE | 9.50% | **8.28%** |
+| MAPE | 9.63% | **8.46%** |
+
+The LSTM was competitive (within ~1.2 points of SMAPE) but XGBoost was both more
+accurate and far faster to train, so it remains the model put forward. This is
+the practical trade-off you make on tabular retail data. (The 8.28% subset figure
+differs slightly from the 8.50% full-data figure above because it is computed on
+the 100-store subset, not all 1,115 stores.)
+
+![LSTM vs XGBoost](outputs/figures/lstm_vs_xgb.png)
+
 ## Inventory optimization approach
 
 Forecasts become order recommendations with:
@@ -169,6 +193,7 @@ retail-sales-forecasting-inventory/
 │   ├── data_prep.py      # load, inspect, clean, merge
 │   ├── features.py       # calendar + leakage-safe lag/rolling features
 │   ├── modeling.py       # time split, baseline, XGBoost, metrics
+│   ├── lstm_model.py     # Keras LSTM, fair head-to-head vs XGBoost
 │   ├── inventory.py      # forecast → safety stock → order recommendation
 │   ├── visualization.py  # all EDA / evaluation / inventory charts
 │   └── mlflow_tracking.py# optional experiment tracking
@@ -196,7 +221,12 @@ python src/modeling.py         # -> metrics, predictions, feature_importance, mo
 python src/inventory.py        # -> inventory recommendations
 python src/visualization.py    # -> all charts in outputs/figures/
 
-# 4. Optional experiment tracking
+# 4. Optional: deep-learning comparison (LSTM vs XGBoost)
+pip install tensorflow         # or tensorflow-cpu (lighter, no GPU needed)
+python src/lstm_model.py       # -> lstm_metrics.json, lstm_vs_xgb.png
+# quicker trial: LSTM_N_STORES=30 LSTM_EPOCHS=8 python src/lstm_model.py
+
+# 5. Optional experiment tracking
 python src/mlflow_tracking.py
 mlflow ui --backend-store-uri sqlite:///mlflow.db   # then open http://127.0.0.1:5000
 ```
@@ -220,7 +250,7 @@ Runs comfortably on a normal laptop; XGBoost training takes roughly 1–3 minute
 
 - Hyperparameter tuning and a `log1p(Sales)` target to optimize percentage error.
 - Rolling features computed over open days only.
-- A simplified LSTM on aggregate daily sales as a comparison model.
+- A deeper / tuned LSTM trained on all stores, to see if it can close the gap.
 - Quantile forecasts to size safety stock directly from prediction intervals.
 - Real inventory + lead-time data to replace the simulated layer.
 - Backtesting across multiple rolling validation windows.
