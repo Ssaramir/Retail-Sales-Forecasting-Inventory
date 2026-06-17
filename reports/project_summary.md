@@ -19,7 +19,9 @@ a random one.
   the final 6 weeks (2015-06-20 → 2015-07-31). Also trained an **LSTM**
   (TensorFlow/Keras) and compared it fairly against XGBoost on a 100-store subset.
 - Added an inventory layer: error-based safety stock (95% service level) →
-  recommended order quantity → low/medium/high stockout-risk flag.
+  recommended order quantity → low/medium/high stockout-risk flag. Plus a **PuLP
+  linear program** for cost-minimizing order quantities (holding + stockout cost
+  subject to lead-time, storage, and safety-stock constraints; rolling-horizon).
 - Tracked experiments with MLflow (optional script).
 
 **Results (validation, last 6 weeks).**
@@ -37,6 +39,9 @@ on unseen weeks. Top drivers: recent sales history (`sales_lag_14`,
 sales by **38.8%**. Simulated stockout-risk mix at 95% service level: ~27% low /
 ~40% medium / ~33% high. In a controlled comparison on 100 stores, an LSTM was
 competitive (9.50% SMAPE) but XGBoost was more accurate (8.28%) and far faster.
+The PuLP optimization (safety stock + lead time + capacity, rolling-horizon) cut
+realized cost by ~3–5% versus a simple order-up-to policy under illustrative
+cost assumptions.
 
 **Limitations.** Simulated inventory; safety stock estimated on the validation
 window; rolling features include closed-day zeros; single global model with

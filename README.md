@@ -61,7 +61,8 @@ raw CSVs ──► data_prep ──► features ──► modeling ──► inv
 2. **Engineer features** — calendar signals plus leakage-safe lag/rolling
    history.
 3. **Split by time**, train a baseline and XGBoost, and evaluate.
-4. **Convert forecasts to orders** with error-based safety stock and risk flags.
+4. **Convert forecasts to orders** with error-based safety stock and risk flags,
+   plus a PuLP linear program for cost-minimizing order quantities.
 5. **Visualize** EDA, evaluation, and inventory results.
 6. **Track** the experiment with MLflow (optional).
 
@@ -179,6 +180,29 @@ Simulated risk mix at 95% service level: **~27% low / ~40% medium / ~33% high**.
 
 This is a **decision-support prototype**, not a supply-chain system.
 
+### Cost-minimizing optimization (PuLP linear program)
+
+On top of the heuristic, a linear program produces **optimized daily order
+quantities** that minimize total **holding + stockout cost** subject to three
+constraints: **lead time** (orders arrive `L` days after they're placed),
+**storage capacity**, and a **safety-stock service level** (`I_t ≥ z × error_std`,
+so the plan keeps a buffer for forecast uncertainty). The LP is run in a
+**rolling-horizon** loop (re-solve each day on the real inventory state, commit
+only that day's order — Model Predictive Control style), and evaluated honestly:
+it plans on the forecast but its cost is measured against **actual** demand.
+
+Against a simple order-up-to policy (same costs, same lead time), the
+safety-constrained LP reduced realized cost by roughly **3–5%** on a 30-store
+sample. Costs, lead time, and capacity are illustrative assumptions (the public
+data has none), so the *percentage is illustrative* but the *method is real*. See
+`src/inventory_optimization.py`.
+
+![LP order plan](outputs/figures/opt_store_plan.png)
+
+> Honesty note: a first, naïve open-loop LP that trusted the point forecast
+> actually *underperformed* the simple policy (it held no buffer), which is why
+> the safety-stock constraint and rolling re-optimization were added.
+
 ## Repository structure
 
 ```
@@ -195,6 +219,7 @@ retail-sales-forecasting-inventory/
 │   ├── modeling.py       # time split, baseline, XGBoost, metrics
 │   ├── lstm_model.py     # Keras LSTM, fair head-to-head vs XGBoost
 │   ├── inventory.py      # forecast → safety stock → order recommendation
+│   ├── inventory_optimization.py  # PuLP LP: cost-minimizing order quantities
 │   ├── visualization.py  # all EDA / evaluation / inventory charts
 │   └── mlflow_tracking.py# optional experiment tracking
 ├── outputs/
@@ -219,6 +244,7 @@ python src/data_prep.py        # -> data/clean_merged.parquet
 python src/features.py         # -> data/features.parquet
 python src/modeling.py         # -> metrics, predictions, feature_importance, model
 python src/inventory.py        # -> inventory recommendations
+python src/inventory_optimization.py  # -> PuLP cost-minimizing order plan
 python src/visualization.py    # -> all charts in outputs/figures/
 
 # 4. Optional: deep-learning comparison (LSTM vs XGBoost)
